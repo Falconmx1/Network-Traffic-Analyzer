@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Generador de tráfico de red de muestra para pruebas
+Autor: Falconmx1
+"""
+
+from scapy.all import *
+from scapy.layers.inet import IP, TCP, UDP, ICMP
+from scapy.layers.dns import DNS, DNSQR
+import random
+import time
+
+def generate_sample_pcap(filename="sample_capture.pcap"):
+    """
+    Genera un archivo PCAP con tráfico simulado para pruebas
+    
+    Args:
+        filename (str): Nombre del archivo de salida
+    """
+    packets = []
+    
+    # 1. Tráfico HTTP (puerto 80)
+    print("Generando paquetes HTTP...")
+    for i in range(10):
+        ip = IP(src=f"192.168.1.{random.randint(2, 50)}", 
+                dst=f"10.0.0.{random.randint(1, 20)}")
+        tcp = TCP(sport=random.randint(40000, 60000), dport=80, flags='A')
+        payload = f"GET /index.html HTTP/1.1\r\nHost: example.com\r\n\r\n"
+        pkt = ip/tcp/Raw(load=payload.encode())
+        packets.append(pkt)
+    
+    # 2. Tráfico HTTPS (puerto 443)
+    print("Generando paquetes HTTPS...")
+    for i in range(8):
+        ip = IP(src=f"192.168.1.{random.randint(51, 100)}", 
+                dst=f"172.16.0.{random.randint(1, 10)}")
+        tcp = TCP(sport=random.randint(40000, 60000), dport=443, flags='A')
+        payload = b'\x16\x03\x01\x00\x01\x01'  # TLS Client Hello parcial
+        pkt = ip/tcp/Raw(load=payload)
+        packets.append(pkt)
+    
+    # 3. Tráfico SSH (puerto 22)
+    print("Generando paquetes SSH...")
+    for i in range(5):
+        ip = IP(src=f"10.0.0.{random.randint(1, 30)}", 
+                dst=f"192.168.1.{random.randint(1, 254)}")
+        tcp = TCP(sport=random.randint(40000, 60000), dport=22, flags='PA')
+        payload = b"SSH-2.0-OpenSSH_8.9p1\r\n"
+        pkt = ip/tcp/Raw(load=payload)
+        packets.append(pkt)
+    
+    # 4. Tráfico FTP (puerto 21)
+    print("Generando paquetes FTP...")
+    for i in range(4):
+        ip = IP(src=f"192.168.1.{random.randint(150, 200)}", 
+                dst=f"10.0.0.{random.randint(40, 50)}")
+        tcp = TCP(sport=random.randint(40000, 60000), dport=21, flags='PA')
+        payload = f"USER usuario{i}\r\n".encode()
+        pkt = ip/tcp/Raw(load=payload)
+        packets.append(pkt)
+    
+    # 5. Tráfico DNS (puerto 53)
+    print("Generando paquetes DNS...")
+    domains = ["google.com", "github.com", "stackoverflow.com", "reddit.com", "youtube.com"]
+    for i in range(12):
+        ip = IP(src=f"192.168.1.{random.randint(2, 254)}", 
+                dst="8.8.8.8")
+        udp = UDP(sport=random.randint(40000, 60000), dport=53)
+        dns = DNS(rd=1, qd=DNSQR(qname=random.choice(domains)))
+        pkt = ip/udp/dns
+        packets.append(pkt)
+    
+    # 6. Tráfico ICMP (ping)
+    print("Generando paquetes ICMP...")
+    for i in range(6):
+        ip = IP(src=f"192.168.1.{random.randint(2, 254)}", 
+                dst=f"8.8.8.8")
+        icmp = ICMP(type=8, code=0)  # Echo request
+        pkt = ip/icmp
+        packets.append(pkt)
+    
+    # 7. Tráfico genérico TCP/UDP
+    print("Generando tráfico genérico...")
+    for i in range(15):
+        src_port = random.randint(40000, 60000)
+        dst_port = random.choice([3306, 5432, 6379, 27017, 8080, 8443])
+        ip = IP(src=f"10.0.0.{random.randint(1, 100)}", 
+                dst=f"192.168.1.{random.randint(1, 254)}")
+        if random.choice([True, False]):
+            tcp = TCP(sport=src_port, dport=dst_port, flags='A')
+            pkt = ip/tcp
+        else:
+            udp = UDP(sport=src_port, dport=dst_port)
+            pkt = ip/udp
+        packets.append(pkt)
+    
+    # Guardar en archivo PCAP
+    print(f"Guardando {len(packets)} paquetes en {filename}...")
+    wrpcap(filename, packets)
+    print(f"✅ Archivo PCAP generado: {filename}")
+    
+    return filename
+
+if __name__ == "__main__":
+    generate_sample_pcap()
